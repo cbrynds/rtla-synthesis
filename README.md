@@ -2,10 +2,6 @@
 
 A synthesis environment configured for Synopsys RTL Architect (RTLA) using a 32nm Synopsys PDK with design corner analysis. Tailored for the purpose of pareto curve generation.
 
-## Overview
-
-This repository contains the complete synthesis setup for digital circuit design using Synopsys RTL Architect. It provides automated synthesis flows, timing analysis, and design optimization capabilities across multiple process corners. Additionally, it contains scripting to generate pareto curve plots and analyze PPA design tradeoffs.
-
 ## Configured Design Corners
 
 The synthesis environment is configured for the following four design corners:
@@ -30,29 +26,15 @@ The synthesis environment is configured for the following four design corners:
 
 ## Quick Start
 
-### Basic Synthesis Flow
+### Basic Synthesis Flow (WIP)
 
 1. **Prepare your RTL design**:
-   ```bash
-   # Place your Verilog/VHDL files in the designs/ directory
-   cp your_design.v designs/
-   ```
 
-2. **Configure synthesis parameters**:
-   ```bash
-   # Edit the synthesis configuration file
-   vim config/synthesis_config.tcl
-   ```
+2. **Configure synthesis constraints**:
 
 3. **Run synthesis**:
-   ```bash
-   python run_synthesis.py --design your_design --corner TT
-   ```
 
 4. **Analyze results**:
-   ```bash
-   python analyze_results.py --design your_design
-   ```
 
 ## Directory Structure
 
@@ -76,27 +58,7 @@ rtla-synthesis/
 
 ### Synthesis Configuration
 
-The main synthesis configuration is in `config/synthesis_config.tcl`:
-
-```tcl
-# Key parameters
-set CLOCK_PERIOD 10.0
-set TARGET_LIBRARY "your_library.db"
-set LINK_LIBRARY "* $TARGET_LIBRARY"
-set SEARCH_PATH "path/to/libraries"
-```
-
 ### Design Configuration
-
-Design-specific settings are in `config/design_config.yaml`:
-
-```yaml
-designs:
-  - name: "your_design"
-    top_module: "top_module_name"
-    clock_periods: [5.0, 10.0, 15.0, 20.0]
-    optimization_goals: ["area", "power", "timing"]
-```
 
 ## Pareto Curve Generation
 

@@ -12,6 +12,9 @@ set_clock_transition 0.2 [get_clocks clk]
 set_input_delay -clock [get_clocks clk] 0.5 ${input_ports}
 set_output_delay -clock [get_clocks clk] 0.6 ${output_ports}
 
+# set_input_delay -clock [get_clocks clk] [expr 0.2 * $CLK_PERIOD] ${input_ports}
+# set_output_delay -clock [get_clocks clk] [expr 0.2 * $CLK_PERIOD] ${output_ports}
+
 #set_input_delay -clock [get_clocks v_ate_clk] 0 ${input_test_ports}
 #set_output_delay -clock [get_clocks v_ate_clk] 0 ${output_test_ports}
 

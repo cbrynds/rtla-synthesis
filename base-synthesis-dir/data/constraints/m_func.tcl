@@ -9,7 +9,10 @@
 
 # set_clock_groups -group clk -group clk2 -asynchronous
 
-create_clock -name clk -period $CLK_PERIOD [get_ports clk]
+# create_clock -name clk -period $CLK_PERIOD [get_ports clk]
+
+# TODO: conduct study to compare results of virtual clock + i/p and o/p delay versus register-wrapped module
+create_clock -name clk -period $CLK_PERIOD
 
 set clock_ports [filter_collection [get_attribute [get_clocks] sources] object_class==port]
 set input_ports [remove_from_collection [all_inputs] ${clock_ports}]

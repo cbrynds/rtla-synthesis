@@ -37,7 +37,6 @@ set DESIGN_LIBRARY	  ${DESIGN_NAME}.dlib
 
 # Synthesis Variables
 set clock_period_target 0.01
-set delay_increment 0.01
 set prev_area 0
 set prev_prev_area 0
 set delay_targets {}
@@ -70,6 +69,9 @@ while {1} {
     if {$negative_slack != 0} {
         puts "Timing violated by $negative_slack ns, increasing target clock period."
         set clock_period_target [expr $clock_period_target - $negative_slack]
+
+        # TODO: Create more intelligent logic for selecting delay increment
+        set delay_increment 0.5
     } else {
         puts "Timing met, increasing target clock period by $delay_increment ns."
         lappend delay_targets $clock_period_target
@@ -91,3 +93,5 @@ while {1} {
     remove_block
     remove_design -all
 }
+
+exit

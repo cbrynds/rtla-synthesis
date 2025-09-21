@@ -187,8 +187,7 @@ def create_pareto_json(input_dir: str, design_config_path: str, output_dir: str)
 
 def parse_timing_report(report_path: str) -> Optional[float]:
     """
-    Sums the 'Incr' column values from the line after the first '*/Q' line
-    up to (but not including) the line before 'data arrival time' and returns the sum as a float.
+    Extracts the 'data arrival time' value from the timing report.
     If 'VIOLATED' is found anywhere in the report, returns None.
     """
     # First pass: check for VIOLATED
@@ -197,26 +196,20 @@ def parse_timing_report(report_path: str) -> Optional[float]:
         if 'VIOLATED' in content:
             return None
     
-    # Second pass: parse timing data
-    total = 0.0
-    found_q = False
+    # Second pass: extract data arrival time
     with open(report_path, 'r') as f:
         for line in f:
-            if not found_q:
-                if '/Q' in line:
-                    found_q = True
-                continue
             if 'data arrival time' in line:
-                break
-            parts = line.strip().split()
-            if len(parts) >= 2:
-                try:
-                    incr_val = float(parts[2])
-                    total += incr_val
-                except ValueError:
-                    print(f"Could not convert '{parts[2]}' to float, skipping line.")
-                    pass  # skip lines that don't have a valid float
-    return total
+                # Extract the numeric value from the line
+                parts = line.strip().split()
+                if len(parts) >= 1:
+                    try:
+                        arrival_time = float(parts[-1])
+                        return arrival_time
+                    except ValueError:
+                        print(f"Could not convert '{parts[-1]}' to float.")
+                        return None
+    return None
 
 def parse_area_report(report_path: str) -> Optional[float]:
     """

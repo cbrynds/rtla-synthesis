@@ -22,7 +22,7 @@ def filter_pareto_optimal_points(a: List[float], b: List[float]) -> Tuple[List[f
     
     # Sort by a values (ascending), then by b values (ascending) for ties
     points.sort(key=lambda x: (x[1][0], x[1][1]))
-    
+    print(points)
     pareto_indices = []
     min_b = float('inf')
     
@@ -38,7 +38,7 @@ def filter_pareto_optimal_points(a: List[float], b: List[float]) -> Tuple[List[f
     
     return pareto_a, pareto_b
 
-def plot_pareto(title: str, json_path: str, design_config_path: str, output_dir: str, power: bool = False, remove_points: bool = False):
+def plot_pareto(title: str, json_path: str, design_config_path: str, output_dir: str, power: bool = False, remove_points: bool = False, delay_x_axis: bool = False):
     """
     Plots Pareto curves for each design specified in design_config.
     Y-axis is delay, X-axis is power or area based on the power flag.
@@ -208,29 +208,45 @@ def plot_pareto(title: str, json_path: str, design_config_path: str, output_dir:
         if power:
             pareto_x = [x / 1e6 for x in pareto_x]
             non_pareto_x = [x / 1e6 for x in non_pareto_x]
-        
-        if non_pareto_x and not remove_points:
-            plt.scatter(non_pareto_x, non_pareto_delays, 
-                        color=colors[i], alpha=0.3, s=30)
-            
+            non_delay_label = 'Total Power (μW)'
+        else:
+            non_delay_label = 'Area (μm²)'
         if pareto_x:
-            plt.plot(pareto_x, pareto_delays, 'o-', 
+            if delay_x_axis:
+                # Delay on X, area/power on Y
+                x_plot = pareto_delays
+                y_plot = pareto_x
+                non_pareto_x_plot = non_pareto_delays
+                non_pareto_y_plot = non_pareto_x
+                plt.ylabel(non_delay_label)
+                plt.xlabel('Delay (ns)')
+            else:
+                # Default: area/power on X, delay on Y
+                x_plot = pareto_x
+                y_plot = pareto_delays
+                non_pareto_x_plot = non_pareto_x
+                non_pareto_y_plot = non_pareto_delays
+                plt.xlabel(non_delay_label)
+                plt.ylabel('Delay (ns)')
+            
+            plt.plot(x_plot, y_plot, 'o-', 
                     color=colors[i], linewidth=2, markersize=6,
                     label=f'{design}')
             curves_data.append({
                 'label': design,
-                'x': list(pareto_x),
-                'y': list(pareto_delays),
+                'x': list(x_plot),
+                'y': list(y_plot),
             })
+            
+            if non_pareto_x_plot and not remove_points:
+                plt.scatter(non_pareto_x_plot, non_pareto_y_plot, 
+                            color=colors[i], alpha=0.3, s=30)
     
-    x_label = 'Total Power (μW)' if power else 'Area (μm²)'
-    plt.xlabel(x_label)
-    plt.ylabel('Delay (ns)')
     if power:
         plot_title = title + "\n(Switching Power + Internal Power + Leakage Power)"
     else:
         plot_title = title
-    # plt.title(plot_title)
+    plt.title(plot_title)
     plt.legend()
     plt.grid(True, alpha=0.3)
     
@@ -361,6 +377,7 @@ def main():
     parser.add_argument('--remove_points', '-r', action='store_true', help='Remove non-pareto optimal points from graph')
     parser.add_argument('--module_name', '-m', required=True, help='Name of the top module of the design')
     parser.add_argument('--title', '-t', required=True, help='Title of the plot')
+    parser.add_argument('--delay_x_axis', action='store_true', help='Plot delay on X-axis instead of Y-axis')
     args = parser.parse_args()
 
     # Create Pareto JSON data
@@ -377,7 +394,8 @@ def main():
         design_config_path=args.design_config,
         output_dir=args.output_dir,
         power=False,
-        remove_points=args.remove_points
+        remove_points=args.remove_points,
+        delay_x_axis=args.delay_x_axis
     )
     
     print(f"Plotting {args.module_name} with power as X-axis")
@@ -388,7 +406,8 @@ def main():
         design_config_path=args.design_config,
         output_dir=args.output_dir,
         power=True,
-        remove_points=args.remove_points
+        remove_points=args.remove_points,
+        delay_x_axis=args.delay_x_axis
     )
 
 if __name__ == "__main__":

@@ -1,6 +1,6 @@
 # RTLA Synthesis Environment
 
-A synthesis environment configured for Synopsys RTL Architect (RTLA) using a 32nm Synopsys PDK with design corner analysis. Tailored for the purpose of pareto curve generation.
+A synthesis environment configured for Synopsys RTL Architect (RTLA) using a 32nm Synopsys PDK. Created for the purpose of pareto curve analysis.
 
 ## Prerequisites
 
@@ -11,8 +11,7 @@ A synthesis environment configured for Synopsys RTL Architect (RTLA) using a 32n
 - Synopsys PrimePower (For power analysis)
 
 ### System Requirements
-- Linux environment (tested on RHEL/CentOS 8)
-- Minimum 8GB RAM
+- Linux environment
 - X11 forwarding capability (for GUI tools)
 
 ## Directory Structure
@@ -28,7 +27,7 @@ rtla-synthesis/
 │       ├── clean_dir.sh                # Script to remove RTLA files and metadeta. Warning: will clear reports directory
 │       ├── run_synthesis.tcl           # Analyzes and elaborates RTL files and then performs FAST physical-aware synthesis
 │       └── setup.tcl                   # Creates design library and loads technology files
-├── pareto_synthesis.tcl                # Top-level synthesis script to generate pareto curves
+├── pareto_synthesis.tcl                # Top-level synthesis script to evaluate pareto curves
 ├── plot_synthesis_results.py           # Script to plot pareto curves
 └── README.md                           # This file
 ```
@@ -58,15 +57,19 @@ The synthesis environment is configured for the following four design corners:
 3. **SS0p95v125c**: Longest path delays, worst-case for setup timing, higher leakage
 4. **SS0p95v40c**: Long path delays, low leakage
 
+As this environment is designed for **evaluating** and **comparing** different RTLs, with less of a focus on physical implementation/manufacturability, only the **ss0p95v125c** corner is currently being evaluated to speed up synthesis time.
+
 ## Pareto Curve Generation
 
 The script `pareto_synthesis.tcl` contains the logic for generating a pareto curve for a given design. It uses the following procedure for curve generation:
 
-1. Select an extremely small clock period target that is expected to be violated (default is 0.01 ns)
-2. Synthesize the design and check the timing report
-3. Add on the negative slack to the clock period target, clear the current design data, and re-synthesize. This is expected to meet timing
-4. Report results. If timing is violated again, add on negative slack. If not, increment the clock period target by `delay_increment` (default is 0.5ns, will need to be scaled accordingly for larger designs. There is room for more intelligent logic to select this clock period target)
-5. Continue the loop of synthesizing -> checking reports -> clearing design data until minimum area has saturated (the design area has not decreased for three iterations)
+1. Find the minimum achievable area by setting a loose timing constraint (5.00ns by default). 
+2. Find this midpoint of this loose timing constraint with an extremely tight timing constraint (0.01ns by default).
+3. Evaluate the midpoint and check to see if the area has increased. If so, treat the midpoint constraint as the new lower bound. If the area has not changed, treat the midpoint constraint as the new upper bound. 
+4. Repeat the process for a fixed number of iterations or until the difference between the high and low timing constraints is sufficiently small. This final constraint will be the constraint producing the minimum area design.
+5. Repeat the same binary search process as above, this time finding the minimum delay timing constraint. This will be the timing constraint with slack=0.
+6. With the extreme timing constraints found, compute a list of delay constraints to evaluate based on the `num_pareto_points` variable
+7. Evaluate this list of constraints, generating reports for each point on the pareto curve.
 6. Exit after completing pareto curve generation
 
 ### Generated Reports
@@ -79,7 +82,7 @@ The script `pareto_synthesis.tcl` contains the logic for generating a pareto cur
 
 ## Pareto Curve Plotting
 
-The `plot_synthesis_results.py` script generates Pareto curves from synthesis results. This tool visualizes the trade-offs between area, delay, and power for different design implementations.
+The `plot_synthesis_results.py` script generates Pareto curves from synthesis results. This tool visualizes the trade-offs between area, delay, and power for different designs.
 
 ### Usage
 
@@ -94,7 +97,6 @@ python plot_synthesis_results.py [OPTIONS]
 | `--input_dir` | `-i` | Path to directory containing synthesis results for different designs |
 | `--design_config` | `-d` | Path to YAML config file with different designs to be plotted |
 | `--output_dir` | `-o` | Path to output directory where plots will be saved |
-| `--module_name` | `-m` | Name of the top module of the design |
 | `--title` | `-t` | Title of the plot |
 
 ### Optional Arguments
@@ -102,7 +104,7 @@ python plot_synthesis_results.py [OPTIONS]
 | Argument | Short | Description |
 |----------|-------|-------------|
 | `--remove_points` | `-r` | Remove non-Pareto optimal points from graph |
-| `--power` | `-p` | Use power as X-axis instead of area |
+| `--delay_y_axis` | `-y` | Plot delay on the y axis instead of the x axis |
 
 ### Example Usage
 
@@ -112,7 +114,6 @@ python plot_synthesis_results.py \
     --input_dir ./designs \
     --design_config ./design_config.yaml \
     --output_dir ./plots \
-    --module_name adder_brent_kung_64b \
     --title "Brent-Kung 64-bit Adder Pareto Curve"
 ```
 
@@ -122,9 +123,8 @@ python plot_synthesis_results.py \
     --input_dir ./designs \
     --design_config ./design_config.yaml \
     --output_dir ./plots \
-    --module_name adder_brent_kung_64b \
     --title "Brent-Kung 64-bit Adder Power-Delay Analysis" \
-    --power
+    --delay_y_axis
 ```
 
 #### Clean Pareto Curve (Optimal Points Only)
@@ -133,7 +133,6 @@ python plot_synthesis_results.py \
     --input_dir ./designs \
     --design_config ./design_config.yaml \
     --output_dir ./plots \
-    --module_name adder_brent_kung_64b \
     --title "Brent-Kung 64-bit Adder Pareto Curve Optimal Points" \
     --remove_points
 ```

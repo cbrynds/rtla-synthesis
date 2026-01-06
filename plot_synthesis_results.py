@@ -3,12 +3,15 @@ from typing import List, Tuple, Optional
 import os
 import json
 import yaml
+import matplotlib
+matplotlib.use('Agg')  # Use non-interactive backend
+import matplotlib.pyplot as plt
+import numpy as np
 
 def filter_pareto_optimal_points(a: List[float], b: List[float]) -> Tuple[List[float], List[float]]:
     """
     Filters points to keep only Pareto optimal ones.
-    A point is Pareto optimal if there is no other point that dominates it
-    (i.e., no other point has better or equal values in both dimensions).
+    A point is Pareto optimal if there is no other point that dominates it (i.e., no other point has better or equal values in both dimensions).
     For minimization problems, lower values are better.
     """
     if len(a) != len(b):
@@ -38,10 +41,10 @@ def filter_pareto_optimal_points(a: List[float], b: List[float]) -> Tuple[List[f
     
     return pareto_a, pareto_b
 
-def plot_pareto(title: str, json_path: str, design_config_path: str, output_dir: str, power: bool = False, remove_points: bool = False, delay_x_axis: bool = False):
+def plot_pareto(title: str, json_path: str, design_config_path: str, output_dir: str, power: bool = False, remove_points: bool = False, delay_y_axis: bool = False):
     """
     Plots Pareto curves for each design specified in design_config.
-    Y-axis is delay, X-axis is power or area based on the power flag.
+    By default, Y-axis is area/power based on the power flag, and the X-axis is delay.
     """
     def _median(values: List[float]) -> Optional[float]:
         if not values:
@@ -148,11 +151,6 @@ def plot_pareto(title: str, json_path: str, design_config_path: str, output_dir:
                 med_sv_pct = (med_sv * 100.0) if med_sv is not None else float('nan')
                 print(f"[Equal {x_label_name}] Max delay saving: {max_sv:.2f}% | Avg delay saving: {avg_sv:.2f}% | Median delay saving: {med_sv_pct:.2f}% (N={len(savings)})")
     
-    import matplotlib
-    matplotlib.use('Agg')  # Use non-interactive backend
-    import matplotlib.pyplot as plt
-    import numpy as np
-    
     # Load design configuration
     with open(design_config_path, 'r') as f:
         config = yaml.safe_load(f)
@@ -199,8 +197,6 @@ def plot_pareto(title: str, json_path: str, design_config_path: str, output_dir:
             print(f"Warning: No valid data points for design {design}, skipping.")
             continue
         
-        # Filter Pareto optimal points if requested
-        # if remove_points:
         pareto_x, pareto_delays = filter_pareto_optimal_points(x_values, delays)
         # Plot non-Pareto optimal points as scatter
         non_pareto_x = [x for x in x_values if x not in pareto_x]
@@ -212,22 +208,22 @@ def plot_pareto(title: str, json_path: str, design_config_path: str, output_dir:
         else:
             non_delay_label = 'Area (μm²)'
         if pareto_x:
-            if delay_x_axis:
-                # Delay on X, area/power on Y
-                x_plot = pareto_delays
-                y_plot = pareto_x
-                non_pareto_x_plot = non_pareto_delays
-                non_pareto_y_plot = non_pareto_x
-                plt.ylabel(non_delay_label)
-                plt.xlabel('Delay (ns)')
-            else:
-                # Default: area/power on X, delay on Y
+            if delay_y_axis:
+                # Area/power on X, delay on Y
                 x_plot = pareto_x
                 y_plot = pareto_delays
                 non_pareto_x_plot = non_pareto_x
                 non_pareto_y_plot = non_pareto_delays
                 plt.xlabel(non_delay_label)
                 plt.ylabel('Delay (ns)')
+            else:
+                # Default: delay on X, area/power on Y
+                x_plot = pareto_delays
+                y_plot = pareto_x
+                non_pareto_x_plot = non_pareto_delays
+                non_pareto_y_plot = non_pareto_x
+                plt.ylabel(non_delay_label)
+                plt.xlabel('Delay (ns)')
             
             plt.plot(x_plot, y_plot, 'o-', 
                     color=colors[i], linewidth=2, markersize=6,
@@ -246,6 +242,7 @@ def plot_pareto(title: str, json_path: str, design_config_path: str, output_dir:
         plot_title = title + "\n(Switching Power + Internal Power + Leakage Power)"
     else:
         plot_title = title
+        
     plt.title(plot_title)
     plt.legend()
     plt.grid(True, alpha=0.3)
@@ -375,9 +372,8 @@ def main():
     parser.add_argument('--design_config', '-d', required=True, help='Path to YAML config file with different designs to be plotted')
     parser.add_argument('--output_dir', '-o', required=True, help='Path to output directory where plots will be saved')
     parser.add_argument('--remove_points', '-r', action='store_true', help='Remove non-pareto optimal points from graph')
-    parser.add_argument('--module_name', '-m', required=True, help='Name of the top module of the design')
     parser.add_argument('--title', '-t', required=True, help='Title of the plot')
-    parser.add_argument('--delay_x_axis', action='store_true', help='Plot delay on X-axis instead of Y-axis')
+    parser.add_argument('--delay_y_axis', '-y', action='store_true', help='Plot delay on Y-axis instead of X-axis')
     args = parser.parse_args()
 
     # Create Pareto JSON data
@@ -386,8 +382,7 @@ def main():
     # Generate Pareto plots
     json_path = os.path.join(args.output_dir, 'pareto_data.json')
     
-    print(f"Plotting {args.module_name} with area as X-axis")
-    # Plot with area as X-axis
+    print(f"Plotting area-delay curve")
     plot_pareto(
         title=f"Area-Delay Curves for {args.title}",
         json_path=json_path,
@@ -395,11 +390,10 @@ def main():
         output_dir=args.output_dir,
         power=False,
         remove_points=args.remove_points,
-        delay_x_axis=args.delay_x_axis
+        delay_y_axis=args.delay_y_axis
     )
     
-    print(f"Plotting {args.module_name} with power as X-axis")
-    # Plot with power as X-axis
+    print(f"Plotting power-delay curve")
     plot_pareto(
         title=f"Power-Delay Curves for {args.title}",
         json_path=json_path,
@@ -407,7 +401,7 @@ def main():
         output_dir=args.output_dir,
         power=True,
         remove_points=args.remove_points,
-        delay_x_axis=args.delay_x_axis
+        delay_y_axis=args.delay_y_axis
     )
 
 if __name__ == "__main__":
